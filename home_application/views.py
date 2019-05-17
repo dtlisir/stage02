@@ -132,9 +132,99 @@ def get_scriptlist_by_bizid(request):
     return JsonResponse(result)
 
 
-def execute_script(request):
+def execute_job(request):
     """
     执行作业
+    """
+    biz_id = request.POST.get("biz_id")
+    biz_name = request.POST.get("biz_name")
+    job_id = request.POST.get("job_id")
+    job_name = request.POST.get("job_name")
+    ip = request.POST.get("ip")
+
+    if biz_id:
+        biz_id = int(biz_id)
+
+    if job_id:
+        job_id = int(job_id)
+
+    client = get_client_by_request(request)
+    execute_task = run_job.delay(client, biz_id, job_id, ip)
+
+    op_db = Operation.objects.create(
+        biz=biz_name,
+        task=job_name,
+        ip=ip,
+        celery_id=execute_task.id,
+        user=request.user.username
+    )
+
+    return JsonResponse({"result": True, "data": op_db.celery_id, "message": "success"})
+
+
+@task()
+def run_job(client, biz_id, job_id, ip):
+    """执行作业"""
+
+    # 执行中
+    op_db = Operation.objects.filter(celery_id=run_script.request.id).update(
+        status="running"
+    )
+    resp = client.job.get_job_detail(
+        bk_biz_id=biz_id,
+        bk_job_id=job_id
+    )
+
+    steps_args = []
+    if resp.get('result'):
+        data = resp.get('data', {})
+        steps = data.get('steps', [])
+        # 组装步骤参数
+        for _step in steps:
+            steps_args.append(
+                {
+                    'step_id': int(_step.get('step_id')),
+                    'ip_list': [{
+                        'bk_cloud_id': 0,
+                        'ip': ip,
+                    }],
+                }
+            )
+
+    resp = client.job.execute_job(
+        bk_biz_id=biz_id,
+        bk_job_id=job_id,
+        steps=steps_args
+    )
+    # 启动失败
+    if not resp.get('result', False):
+        op_db = Operation.objects.filter(celery_id=run_script.request.id).update(
+            log=json.dumps(resp.get("message")),
+            end_time=timezone.now(),
+            result=False,
+            status="start_failed"
+        )
+    task_id = resp.get('data').get('job_instance_id')
+    poll_job_task(client, biz_id, task_id)
+
+    # 查询日志
+    resp = client.job.get_job_instance_log(job_instance_id=task_id, bk_biz_id=biz_id)
+    log = resp['data'][0]['step_results'][0]['ip_logs'][0]['log_content']
+    status = resp['data'][0]['status']
+    result = True if status == 3 else False
+    now = datetime.datetime.now()
+    logger.info("celery任务调用成功，当前时间：{}".format(now))
+    op_db = Operation.objects.filter(celery_id=run_script.request.id).update(
+        log=log,
+        end_time=timezone.now(),
+        result=result,
+        status="successed" if result else "failed"
+    )
+
+
+def execute_script(request):
+    """
+    执行脚本
     """
     biz_id = request.POST.get("biz_id")
     biz_name = request.POST.get("biz_name")
@@ -151,7 +241,7 @@ def execute_script(request):
     client = get_client_by_request(request)
     execute_task = run_script.delay(client, biz_id, script_id, ip)
 
-    opt = Operation.objects.create(
+    op_db = Operation.objects.create(
         biz=biz_name,
         task=script_name,
         ip=ip,
@@ -159,7 +249,7 @@ def execute_script(request):
         user=request.user.username
     )
 
-    return JsonResponse({"result": True, "data": opt.celery_id, "message": "success"})
+    return JsonResponse({"result": True, "data": op_db.celery_id, "message": "success"})
 
 
 @task()
@@ -167,7 +257,7 @@ def run_script(client, biz_id, script_id, ip):
     """快速执行脚本"""
 
     # 执行中
-    Operation.objects.filter(celery_id=run_script.request.id).update(
+    op_db = Operation.objects.filter(celery_id=run_script.request.id).update(
         status="running"
     )
 
@@ -179,8 +269,8 @@ def run_script(client, biz_id, script_id, ip):
     )
     # 启动失败
     if not resp.get('result', False):
-        Operation.objects.filter(celery_id=run_script.request.id).update(
-            log=resp.get("message"),
+        op_db = Operation.objects.filter(celery_id=run_script.request.id).update(
+            log=json.dumps(resp.get("message")),
             end_time=timezone.now(),
             result=False,
             status="start_failed"
@@ -195,7 +285,7 @@ def run_script(client, biz_id, script_id, ip):
     result = True if status == 3 else False
     now = datetime.datetime.now()
     logger.info("celery任务调用成功，当前时间：{}".format(now))
-    Operation.objects.filter(celery_id=run_script.request.id).update(
+    op_db = Operation.objects.filter(celery_id=run_script.request.id).update(
         log=log,
         end_time=timezone.now(),
         result=result,
@@ -248,10 +338,10 @@ def get_log(request, operation_id):
     })
 
 
-@periodic_task(run_every=crontab(minute='0', hour='*/1', day_of_week="*"))
+@periodic_task(run_every=crontab(minute='*/1', hour='*', day_of_week="*"))
 def disk_execute_script(user="80167885"):
     try:
-        Operation.objects.create(
+        op_db = Operation.objects.create(
             biz="业务1",
             task="磁盘分区使用率",
             ip="10.0.1.192",
@@ -275,21 +365,23 @@ def disk_execute_script(user="80167885"):
             if script_result['result']:
                 data = script_result['log'].split('\n')
                 logger.info("[10.0.1.192]根分区磁盘使用率为：{}".format(data[1]))
-                Operation.objects.filter(celery_id=disk_execute_script.request.id).update(
+                op_db = Operation.objects.filter(celery_id=disk_execute_script.request.id).update(
                     log=script_result['log'],
                     end_time=timezone.now(),
                     result=True,
                     status="successed" if result else "failed"
                 )
             else:
-                Operation.objects.filter(celery_id=disk_execute_script.request.id).update(
+                pass
+                op_db = Operation.objects.filter(celery_id=disk_execute_script.request.id).update(
                     log=json.dumps([result.get("message")]),
                     end_time=timezone.now(),
                     result=False,
                     status="start_failed"
                 )
         else:
-            Operation.objects.filter(celery_id=disk_execute_script.request.id).update(
+            pass
+            op_db = Operation.objects.filter(celery_id=disk_execute_script.request.id).update(
                 log=json.dumps([result.get("message")]),
                 end_time=timezone.now(),
                 result=False,
@@ -301,10 +393,10 @@ def disk_execute_script(user="80167885"):
     logger.info("celery周期任务调用成功，当前时间：{}".format(now))
 
 
-@periodic_task(run_every=crontab(minute='*/30', hour='*', day_of_week="*"))
+@periodic_task(run_every=crontab(minute='*', hour='*/1', day_of_week="*"))
 def mem_execute_script(user="80167885"):
     try:
-        Operation.objects.create(
+        op_db = Operation.objects.create(
             biz="业务1",
             task="内存使用率",
             ip="10.0.1.192",
@@ -328,21 +420,23 @@ def mem_execute_script(user="80167885"):
             if script_result['result']:
                 data = script_result['log'].split('\n')
                 logger.info("[10.0.1.192]内存使用率为：{}".format(data[1]))
-                Operation.objects.filter(celery_id=mem_execute_script.request.id).update(
+                op_db = Operation.objects.filter(celery_id=mem_execute_script.request.id).update(
                     log=script_result['log'],
                     end_time=timezone.now(),
                     result=True,
                     status="successed" if result else "failed"
                 )
             else:
-                Operation.objects.filter(celery_id=mem_execute_script.request.id).update(
+                pass
+                op_db = Operation.objects.filter(celery_id=mem_execute_script.request.id).update(
                     log=json.dumps([result.get("message")]),
                     end_time=timezone.now(),
                     result=False,
                     status="start_failed"
                 )
         else:
-            Operation.objects.filter(celery_id=mem_execute_script.request.id).update(
+            pass
+            op_db = Operation.objects.filter(celery_id=mem_execute_script.request.id).update(
                 log=json.dumps([result.get("message")]),
                 end_time=timezone.now(),
                 result=False,

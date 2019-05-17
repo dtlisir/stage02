@@ -95,7 +95,7 @@
                 <div class="king-block-header king-info">
                     <ul class="king-block-options">
                         <li>
-                            <!-- <button type="button"><i class="fa fa-cog"></i></button> -->
+                            <button type="button" onclick="javascript:table.ajax.reload();"><i class="fa fa-cog">刷新</i></button>
                         </li>
                     </ul>
                     <h3 class="king-block-title">任务记录</h3>
@@ -238,15 +238,19 @@
         */
         function execute_job() {
             var biz_id = $('#biz_id').val();
+            var biz_name = $('#biz_id').find("option:selected").text();
             var ip = $('#ip').val();
             var job_id = $('#job').val();
-            $.post('{{ SITE_URL }}/execute_job/', {
+            var job_name = $('#job').find("option:selected").text();
+            $.post('{{ SITE_URL }}execute_job/', {
                 'biz_id': biz_id,
+                'biz_name': biz_name,
                 'ip': ip,
-                'job_id': job_id
+                'job_id': job_id,
+                'job_name': job_name
             }, function (res) {
                 if (res.result) {
-
+                    table.ajax.reload();
                 } else {
                     console.log("任务执行失败");
                 }

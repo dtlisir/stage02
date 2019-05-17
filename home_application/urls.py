@@ -24,6 +24,7 @@ urlpatterns = (
     url(r'^get_job_list/$', views.get_joblist_by_bizid),
     url(r'^get_script_list/$', views.get_scriptlist_by_bizid),
     url(r'^execute_script/$', views.execute_script),
+    url(r'^execute_job/$', views.execute_job),
     url(r'^get_operations/$', views.get_operations),
     url(r'^get_log/(?P<operation_id>\d+)/$', views.get_log),
     url(r'^disk_chartdata/$', views.get_disk_chartdata),
