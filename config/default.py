@@ -72,13 +72,14 @@ STATICFILES_DIRS = [
 # worker: python manage.py celery worker -l info
 # beat: python manage.py celery beat -l info
 # 不使用时，请修改为 False，并删除项目目录下的 Procfile 文件中 celery 配置
-IS_USE_CELERY = False
+IS_USE_CELERY = True
 
 # CELERY 并发数，默认为 2，可以通过环境变量或者 Procfile 设置
 CELERYD_CONCURRENCY = os.getenv('BK_CELERYD_CONCURRENCY', 2)
 
 # CELERY 配置，申明任务的文件路径，即包含有 @task 装饰器的函数文件
 CELERY_IMPORTS = (
+    'home_application.views',
 )
 
 # load logging settings
