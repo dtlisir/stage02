@@ -338,7 +338,7 @@ def get_log(request, operation_id):
     })
 
 
-@periodic_task(run_every=crontab(minute='*/1', hour='*', day_of_week="*"))
+@periodic_task(run_every=crontab(minute='0', hour='*/1', day_of_week="*"))
 def disk_execute_script(user="80167885"):
     try:
         op_db = Operation.objects.create(
@@ -393,7 +393,7 @@ def disk_execute_script(user="80167885"):
     logger.info("celery周期任务调用成功，当前时间：{}".format(now))
 
 
-@periodic_task(run_every=crontab(minute='*', hour='*/1', day_of_week="*"))
+@periodic_task(run_every=crontab(minute='*/30', hour='*', day_of_week="*"))
 def mem_execute_script(user="80167885"):
     try:
         op_db = Operation.objects.create(
