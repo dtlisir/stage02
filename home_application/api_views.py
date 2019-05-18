@@ -65,4 +65,4 @@ def get_job_instance_log(client, biz_id, job_id):
             return get_job_instance_log(client, biz_id, job_id)
 
     else:
-        return JsonResponse({"result": "false", "message": result["message"]})
+        return JsonResponse({"result": "false", "message": result["message"], "data": {}})
