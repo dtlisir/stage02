@@ -372,7 +372,6 @@ def disk_execute_script(user="80167885"):
                     status="successed" if result else "failed"
                 )
             else:
-                pass
                 op_db = Operation.objects.filter(celery_id=disk_execute_script.request.id).update(
                     log=json.dumps([result.get("message")]),
                     end_time=timezone.now(),
@@ -380,7 +379,6 @@ def disk_execute_script(user="80167885"):
                     status="start_failed"
                 )
         else:
-            pass
             op_db = Operation.objects.filter(celery_id=disk_execute_script.request.id).update(
                 log=json.dumps([result.get("message")]),
                 end_time=timezone.now(),

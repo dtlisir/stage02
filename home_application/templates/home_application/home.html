@@ -278,6 +278,23 @@
                 }
             }, 'json');
         }
+
+        function test() {
+
+            $.post('{{ SITE_URL }}api/get_dfinfo_lisir/', {
+                'biz_id': 3,
+                'os_type': 'linux',
+                'ip': '10.0.1.192',
+                'partition': '/',
+                'bk_token': 'noVe_8AUnS7WFdWbOldJhjsjgYhEsGhyvSNN5gmrdUI'
+            }, function (res) {
+                if (res.result) {
+                    console.log(res);
+                } else {
+                    console.log(res);
+                }
+            }, 'json');
+        }
     </script>
     <script>
         $(function () {

@@ -25,4 +25,6 @@ urlpatterns = [
     # 如果你习惯使用 mako 模板，请在 mako_application 里开发你的应用，
     # 这里的 mako_application 可以改成你想要的名字
     url(r'^mako/', include('mako_application.urls')),
+
+    url(r'^api/', include('home_application.api_urls')),
 ]
