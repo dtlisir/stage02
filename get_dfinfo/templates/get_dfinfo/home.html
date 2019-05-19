@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block head %}
+    <title>蓝鲸开发实验</title>
+    {{ block.super }}
+{% endblock %}
+
+{% block navigation %}
+    <li><a href="{{ SITE_URL }}"><span>首页</span></a></li>
+    <li class="king-navbar-active"><a href="{{ SITE_URL }}get_dfinfo/"><span>API测试</span></a></li>
+{% endblock %}
+
+{% block content %}
+    <div class="king-page-box">
+        <div class="king-container clearfix" style="width: 1024px">
+            <div class="king-block king-block-bordered king-block-themed mb0">
+                <div class="king-block-header king-info">
+                    <ul class="king-block-options">
+                        <li>
+                            <!-- <button type="button"><i class="fa fa-cog"></i></button> -->
+                        </li>
+                    </ul>
+                    <h3 class="king-block-title">查询条件</h3>
+                </div>
+                <div class="king-block-content">
+                    <form class="form-horizontal">
+                        <div class="form-group clearfix ">
+                            <label class="col-sm-1 control-label bk-lh30 pt0">IP：</label>
+                            <div class="col-sm-3">
+                                <input type="text" class="form-control bk-valign-top" id="ip" placeholder="输入查询的IP"></div>
+                            <label class="col-sm-1 control-label bk-lh30 pt0">系统：</label>
+                            <div class="col-sm-2">
+                                <select name="" id="os" class="form-control bk-valign-top">
+                                    <option value="linux">linux</option>
+                                </select>
+                            </div>
+
+                            <label class="col-sm-1 control-label bk-lh30 pt0">分区：</label>
+                            <div class="col-sm-2">
+                                <input type="text" class="form-control bk-valign-top" id="mounted" placeholder="输入磁盘分区"></div>
+                            <div class="col-sm-1">
+                                <button type="button" class="king-btn mr10  king-success" onclick="search()">查询</button>
+                            </div>
+                        </div>
+                    </form>
+                    <table class="table mb0 pr15 ranger-box ">
+                        <thead></thead>
+                        <tbody>
+                        <tr>
+                            <td colspan="6" style="text-align: center;color: #ccc">没有数据</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                    <template id="ranger_nodata_tpl">
+                        <tr>
+                            <td colspan="6" style="text-align: center;color: #ccc">没有符合条件的数据</td>
+                        </tr>
+                    </template>
+                    <template id="header_tpl">
+                        <tr>
+                            <th>IP</th>
+                            <th>Size</th>
+                            <th>Used</th>
+                            <th>Avail</th>
+                            <th>Use%</th>
+                            <th>Mounted</th>
+
+                        </tr>
+                    </template>
+                    <template id="tpl_1526111412901">
+                        <tr>
+                            <td>#IP#</td>
+                            <td>#Size#</td>
+                            <td>#Used#</td>
+                            <td>#Avail#</td>
+                            <td>#Use%#</td>
+                            <td>#Mounted#</td>
+                        </tr>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block extra_block %}
+<script>
+    function search(){
+        var ip = $('#ip').val();
+        var os = $('#os').val();
+        var mounted = $('#mounted').val();
+        if (ip === '' || mounted === ''){
+            alert("查询条件不能为空");
+            return;
+        }
+        get_dfinfo(ip, os, mounted);
+    }
+    function get_dfinfo(ip, os, mounted){
+        $.ajax({
+            url: '{{ SITE_URL }}get_dfinfo/get_dfinfo/',
+            type: 'GET',
+            data: {'ip': ip, 'os': os, 'mounted': mounted},
+            dataType: 'json',
+            success: function(res){
+                var _html = ' ';
+                var list = res.data;
+                if(list.length){
+                    var tpl = $('#tpl_1526111412901').html();
+                    var headerTpl =  $('#header_tpl').html();
+                    for (var i=0,len=list.length; i < len; i++){
+                        var item = list[i];
+                        _html += renderTpl(tpl, item)
+                    }
+                    $('.ranger-box thead').html(headerTpl);
+                    $('.ranger-box tbody').html(_html);
+                }else{
+                    $('.ranger-box thead').html('');
+                    _html = $('#ranger_nodata_tpl').html();
+                    $('.ranger-box tbody').html(_html);
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}
