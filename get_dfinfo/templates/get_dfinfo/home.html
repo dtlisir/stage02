@@ -114,7 +114,7 @@
             success: function(res){
                 var _html = ' ';
                 var list = res.data;
-                if(list.length){
+                if(res.result){
                     var tpl = $('#tpl_1526111412901').html();
                     var headerTpl =  $('#header_tpl').html();
                     for (var i=0,len=list.length; i < len; i++){

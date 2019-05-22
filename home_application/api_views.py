@@ -17,7 +17,7 @@ def get_dfinfo_lisir(request):
     mounted = request.GET.get('mounted', '')
     token = request.GET.get('token', '')
     if token != TOKEN:
-        return JsonResponse({'result': False, 'data': [], 'message': "Token Authentication Failed"})
+        return JsonResponse({'result': 'false', 'data': [], 'message': "Token Authentication Failed"})
 
     capacitydatas = CapacityData.objects.all()
     if ip:
@@ -39,4 +39,4 @@ def get_dfinfo_lisir(request):
             }
         )
 
-    return JsonResponse({'result': True, 'data': datalist, 'message': 'Success'})
+    return JsonResponse({'result': 'true', 'data': datalist, 'message': 'Success'})
