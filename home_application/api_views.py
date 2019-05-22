@@ -28,7 +28,7 @@ def get_dfinfo_lisir(request):
         capacitydatas = capacitydatas.filter(mounted=mounted)
 
     datalist = []
-    for _data in capacitydatas:
+    for _data in capacitydatas[:11]:
         datalist.append(
             {
                 'ip': _data.ip,
